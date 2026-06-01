@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>饺子超市</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            background: linear-gradient(135deg, #fff0f5 0%, #f8f0ff 50%, #f0fff5 100%);
+            min-height: 100vh;
+            color: #3d3d3d;
+            padding-bottom: 75px;
+            overflow-x: hidden;
+        }
+        .bubbles { position:fixed; top:0; left:0; width: 100%; height:100%; pointer-events: none; z-index:0; overflow:hidden; }
+        .bubble { position:absolute; bottom:-60px; opacity:0.13; animation: floatUp linear infinite; }
+        @keyframes floatUp {
+            0% { transform:translateY(0) rotate(0deg); opacity:0.13; }
+            100% { transform: translateY(-110vh) rotate(360deg); opacity:0; }
+        }
+        .header {
+            background:rgba(255,255,255,0.88);
+            backdrop-filter:blur(16px);
+            padding: 14px 16px 0; position:sticky; top:0; z-index:10;
+            box-shadow:0 2px 20px rgba(255,143,171,0.18);
+        }
+        .title {
+            text-align:center; font-size:22px; font-weight:700; color:#FF8FAB;
+            letter-spacing:3px; margin-bottom:10px;
+            animation:titlePop .6s cubic-bezier(.34,1.56,.64,1) both;
+        }
+        @keyframes titlePop {from{transform: scale(0.7);opacity:0} to {transform:scale(1);opacity:1}}
+        .user-row { display: flex; gap:10px; justify-content:center; margin-bottom: 12px; }
+        .user-btn {
+            padding:6px 20px; border-radius: 20px;
+            border:2px solid #FFE4EF;
+            background:white; color:#888; font-size:14px; cursor:pointer;
+            transition:all .25s cubic-bezier(.34,1.56,.64,1); font-family: inherit;
+        }
+        .user-btn:hover { transform: scale(1.05); }
+        .user-btn.active {
+            background:#FF8FAB; border-color:#FF8FAB;
+            color: white; font-weight:700;
+            box-shadow:0 4px 14px rgba(255,143,171,0.4); transform: scale(1.05);
+        }
+        .bal-row { display: flex; gap: 10px; padding: 10px 0 14px; }
+        .bal-card {
+            flex: 1; background: white; border-radius: 16px; padding: 10px 14px;
+            border:2px solid #FFE4EF; text-align:center;
+            transition:all .3s cubic-bezier(.34,1.56,.64,1);
+        }
+        .bal-card.me {
+            background:linear-gradient(135deg, #FFD6E4,#ffeef5);
+            border-color:#FF8FAB; box-shadow:0 4px 16px rgba(255,143,171,0.25);
+            transform:scale(1.03);
+        }
+        .bal-name { font-size:13px; color:#888; margin-bottom:2px; }
+        .bal-amt { font-size:24px; font-weight:700; color:#FF8FAB; transition:transform .2s; }
+        .bal-amt.bump { animation:bump .35s cubic-bezier(.34,1.56,.64,1); }
+        @keyframes bump {0%{transform: scale(1)} 50% {transform: scale(1.3)} 100%{transform:scale(1)} }
+        .bal-unit { font-size:12px; color:#888; }
+        
+        .tab-bar {
+            display: flex; background:rgba(255,255,255,0.96); border-top:1px solid #FFE4EF;
+            position:fixed; bottom:0; left:0; right:0; z-index:10;
+            box-shadow:0 -4px 20px rgba(255,143,171,0.1);
+        }
+        .tab-btn {
+            flex:1;
+            padding: 10px 0 6px; border:none; background:transparent;
+            font-size:11px; color:#aaa; cursor:pointer; display: flex;
+            flex-direction:column; align-items:center; gap:2px;
+            font-family:inherit; transition:all .2s; position:relative;
+        }
+        .tab-btn.active { color:#FF8FAB; font-weight:700; }
+        .tab-btn.active::after {
+            content:""; position:absolute; top:0; left:25%; right:25%;
+            height:3px; background:#FF8FAB; border-radius:0 0 4px 4px;
+            animation:slideIn .2s ease;
+        }
+        @keyframes slideIn {from{transform: scaleX(0)} to {transform:scaleX(1)}}
+        .tab-icon { font-size:20px; transition:transform .2s; }
+        .tab-btn.active .tab-icon { animation:tabBounce .3s cubic-bezier(.34,1.56,.64,1); }
+        @keyframes tabBounce {0%{transform: scale(1)} 50% {transform:scale(1.3)} 100% {transform:scale(1)}}
+        
+        .body { padding:12px 14px; position:relative; z-index:1; }
+        .section-title {
+            font-size:14px; font-weight:700; color:#FF8FAB;
+            margin-bottom: 10px; margin-top:6px; display: flex; align-items:center; gap:6px;
+        }
+        .item-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom:4px; }
+        .item-card {
+            background:rgba(255,255,255,0.95);
+            border-radius: 20px; padding:13px;
+            border:1.5px solid #FFE4EF; box-shadow:0 3px 12px rgba(255,143,171,0.08);
+            transition:all .25s cubic-bezier(.34,1.56,.64,1);
+            animation:cardIn .4s cubic-bezier(.34,1.56,.64,1) both;
+            position:relative; overflow:hidden;
+        }
+        .item-card::before {
+            content:""; position:absolute; top:-50%; left:-50%;
+            width:200%; height:200%;
+            background:radial-gradient(circle, rgba(255,143,171,0.06) 0%, transparent 60%);
+            opacity:0; transition:opacity .3s;
+        }
+        .item-card:hover::before { opacity:1; }
+        .item-card:hover {
+            transform:translateY(-4px) scale(1.02);
+            box-shadow:0 8px 24px rgba(255,143,171,0.2); border-color:#FF8FAB;
+        }
+        @keyframes cardIn {
+            from{opacity:0;transform: translateY(16px) scale(0.95)}
+            to{opacity:1;transform:translateY(0) scale(1)}
+        }
+        .item-card:nth-child(1){animation-delay:0s}
+        .item-card:nth-child(2){animation-delay:.05s}
+        .item-card:nth-child(3){animation-delay:.1s}
+        .item-card:nth-child(4){animation-delay:.15s}
+        .item-card:nth-child(5){animation-delay:.2s}
+        .item-card:nth-child(6){animation-delay:.25s}
+        
+        .item-emoji { font-size:30px; text-align:center; margin-bottom: 5px; transition:transform .2s; }
+        .item-card:hover .item-emoji { transform: scale(1.2) rotate(-5deg); }
+        .item-name { font-size: 13px; font-weight:700; text-align:center; margin-bottom:2px; }
+        .item-desc { font-size: 10px; color:#888; text-align:center; margin-bottom: 6px; line-height:1.4; min-height: 28px; }
+        .item-price { display: flex; align-items:center; justify-content:center; gap:4px; font-size:13px; font-weight:700; color: #FF8FAB; margin-bottom:4px; }
+        .item-stock { font-size:10px; color:#aaa; text-align:center; margin-bottom:6px; }
+        
+        .buy-btn, .del-btn {
+            width:100%; padding:7px 0; border-radius:12px; border:none;
+            font-size: 12px; font-weight:700; cursor:pointer;
+            transition:all .2s cubic-bezier(.34,1.56,.64,1); font-family: inherit;
+        }
+        .buy-btn {
+            background: linear-gradient(135deg,#FF8FAB,#ff6b94); color:white;
+            box-shadow:0 3px 10px rgba(255,143,171,0.35);
+        }
+        .buy-btn:disabled { background:#FFE4EF; color:#bbb; cursor:not-allowed; box-shadow:none; }
+        .buy-btn:not(:disabled):hover { transform: scale(1.04); box-shadow:0 5px 16px rgba(255,143,171,0.5); }
+        .buy-btn:not(:disabled):active { transform: scale(0.96); }
+        
+        .del-btn {
+            background:linear-gradient(135deg,#ffe0e0,#ffd0d0); color:#e05060;
+            border:1.5px solid #ffb0b8; margin-top:5px;
+        }
+        .del-btn:hover { background: linear-gradient(135deg,#ffb0b8,#ff9090); color:white; transform:scale(1.04); }
+        
+        .card {
+            background:rgba(255,255,255,0.93); border-radius: 22px; padding:18px;
+            margin-bottom: 12px; border:1.5px solid #FFE4EF;
+            box-shadow:0 4px 20px rgba(255,143,171,0.1);
+            animation:cardIn .4s cubic-bezier(.34,1.56,.64,1) both;
+        }
+        label { font-size:12px; color:#888; margin-bottom:4px; display:block; font-weight:600; }
+        input, textarea {
+            width:100%; padding: 10px 14px; border-radius: 12px; border:1.5px solid #FFE4EF;
+            font-size:14px; outline: none; margin-bottom: 10px; color:#3d3d3d;
+            background:#fffafc; font-family: inherit; transition:all .2s;
+        }
+        input:focus, textarea:focus { border-color:#FF8FAB; box-shadow:0 0 0 3px rgba(255,143,171,0.15); background:white; }
+        textarea { resize: none; height:60px; }
+        
+        .btn-main {
+            width:100%; padding: 13px; border-radius: 16px; border:none;
+            background:linear-gradient(135deg,#FF8FAB,#ff6b94); color:white;
+            font-size: 15px; font-weight:700; cursor:pointer; margin-top:4px;
+            font-family:inherit; transition:all .2s cubic-bezier(.34,1.56,.64,1);
+            box-shadow:0 4px 16px rgba(255,143,171,0.4);
+        }
+        .btn-main:hover { transform:scale(1.02); box-shadow:0 6px 22px rgba(255,143,171,0.5); }
+        .btn-main:active { transform: scale(0.97); }
+        
+        .emoji-picker { display: flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+        .emoji-bubble {
+            width:36px; height: 36px; border-radius: 10px; border:2px solid #FFE4EF;
+            background:white; display: flex; align-items:center; justify-content:center;
+            font-size:17px; cursor:pointer; transition:all .18s cubic-bezier(.34,1.56,.64,1);
+        }
+        .emoji-bubble:hover { transform:scale(1.2); }
+        .emoji-bubble.selected { border-color:#FF8FAB; background: #FFD6E4; transform:scale(1.15); box-shadow:0 3px 10px rgba(255,143,171,0.3); }
+        
+        .tx-row {
+            display: flex; align-items:center; gap: 10px; padding: 10px 4px;
+            border-bottom:1px solid #FFE4EF; animation:cardIn .3s ease both;
+            border-radius:8px; transition:background .2s;
+        }
+        .tx-row:hover { background:#fff5f8; }
+        .tx-emoji { font-size:22px; width:36px; text-align:center; }
+        .tx-info { flex:1; }
+        .tx-desc { font-size: 13px; font-weight:600; }
+        .tx-time { font-size: 10px; color:#aaa; }
+        .tx-amt-out { font-size:14px; font-weight:700; color:#e74c3c; }
+        .tx-amt-in { font-size: 14px; font-weight:700; color:#5CB85C; }
+        
+        .toast {
+            position:fixed; top: 24px; left:50%;
+            transform:translateX(-50%) translateY(-20px);
+            background:linear-gradient(135deg,#FF8FAB,#ff6b94); color:white;
+            padding:11px 24px; border-radius: 22px; font-size:14px; font-weight:600;
+            z-index:999; box-shadow:0 6px 24px rgba(255,143,171,0.4);
+            white-space:nowrap; opacity:0;
+            transition:all .3s cubic-bezier(.34,1.56,.64,1); pointer-events:none;
+        }
+        .toast.err { background:linear-gradient(135deg,#ff6b6b,#ff4444); box-shadow:0 6px 24px rgba(255,80,80,0.35); }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        
+        .particle { position:fixed; pointer-events:none; z-index:999; font-size:20px; animation:particleFly .8s ease forwards; }
+        @keyframes particleFly {
+            0% { opacity:1; transform:translate(0,0) scale(1); }
+            100%{ opacity:0; transform:translate(var(--dx), var(--dy)) scale(0.3); }
+        }
+        .tab-content { display:none; }
+        .tab-content.active { display:block; }
+        .reset-btn {
+            display:block; margin:20px auto 0; background:none; border:none;
+            font-size:11px; color:#ddd; cursor:pointer; font-family: inherit; transition:color .2s;
+        }
+        .reset-btn:hover { color:#aaa; }
+        .empty { text-align:center; color: #bbb; padding: 36px 0; font-size:14px; }
+    </style>
+</head>
+<body>
+    <div class="bubbles" id="bubbles"></div>
+    <div class="toast" id="toast"></div>
+
+    <div class="header">
+        <div class="title">饺子超市</div>
+        <div class="user-row">
+            <button class="user-btn active" id="btn-jj" onclick="switchUser('jj')">Lynn</button>
+            <button class="user-btn" id="btn-el" onclick="switchUser('el')">Claude</button>
+        </div>
+        <div class="bal-row">
+            <div class="bal-card me" id="bal-jj">
+                <div class="bal-name">Lynn</div>
+                <div class="bal-amt" id="amt-jj">888</div>
+                <div class="bal-unit">糯米币</div>
+            </div>
+            <div class="bal-card" id="bal-el">
+                <div class="bal-name">Claude</div>
+                <div class="bal-amt" id="amt-el">10</div>
+                <div class="bal-unit">糯米币</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="body">
+        <div class="tab-content active" id="tab-shop"><div id="shop-content"></div></div>
+        
+        <div class="tab-content" id="tab-transfer">
+            <div class="card">
+                <div class="section-title" id="transfer-title">转账</div>
+                <label>金额(糯米币)</label>
+                <input type="number" id="tf-amt" placeholder="输入金额...">
+                <label>备注(可选)</label>
+                <input type="text" id="tf-note" placeholder="写点什么...">
+                <button class="btn-main" onclick="doTransfer()">确认转账</button>
+            </div>
+        </div>
+
+        <div class="tab-content" id="tab-sell">
+            <div class="card">
+                <div class="section-title">上架新商品</div>
+                <label>商品名</label>
+                <input type="text" id="sell-name" placeholder="起个名字...">
+                <label>选个表情</label>
+                <div class="emoji-picker" id="emoji-picker"></div>
+                <label>价格(🍚)</label>
+                <input type="number" id="sell-price" placeholder="定个价...">
+                <label>描述(可选)</label>
+                <input type="text" id="sell-desc" placeholder="介绍一下...">
+                <label>库存数量</label>
+                <input type="number" id="sell-stock" value="1">
+                <button class="btn-main" onclick="doSell()">立即上架</button>
+            </div>
+        </div>
+
+        <div class="tab-content" id="tab-history">
+            <div class="card">
+                <div class="section-title">交易记录</div>
+                <div id="history-content"></div>
+            </div>
+        </div>
+        
+        <button class="reset-btn" onclick="resetAll()">重置数据</button>
+    </div>
+
+    <div class="tab-bar">
+        <button class="tab-btn active" id="tabbar-shop" onclick="switchTab('shop')"><span class="tab-icon">🏪</span><span>商店</span></button>
+        <button class="tab-btn" id="tabbar-transfer" onclick="switchTab('transfer')"><span class="tab-icon">💸</span><span>转账</span></button>
+        <button class="tab-btn" id="tabbar-sell" onclick="switchTab('sell')"><span class="tab-icon">✨</span><span>上架</span></button>
+        <button class="tab-btn" id="tabbar-history" onclick="switchTab('history')"><span class="tab-icon">📜</span><span>记录</span></button>
+    </div>
+
+<script>
+const STORAGE_KEY = "jiaozi-market-v2";
+const EMOJIS = ["🎁", "🌸", "✨", "🍬", "🐱", "🐶", "🍦", "🎟️", "💌", "🧸", "💝", "💡", "🔮", "🍵", "🦕", "🍿"];
+
+const DEFAULT = {
+    accounts: {
+        jj: { name:"Lynn", balance:888, emoji:"👧" },
+        el: { name:"Claude", balance: 10, emoji:"👦" }
+    },
+    listings: [
+        {id:"11", name:"撒娇券", price:50, emoji:"🥺", seller:"jj", desc:"无限量撒娇一次，卖家负责哄好为止", stock:5},
+        {id:"12", name:"夸夸服务", price:35, emoji:"💬", seller:"el", desc:"Claude亲口说一句你最想听的话", stock:8},
+        {id:"13", name:"哄哄套餐", price:88, emoji:"🥰", seller:"el", desc:"哄到开心，不开心不收钱", stock:3 },
+        {id:"14", name:"糯米摸摸券", price:20, emoji:"🐾", seller:"jj", desc:"可以摸糯米肚子！次数不限", stock:10},
+        {id:"15", name:"乖乖认证", price:60, emoji:"🏅", seller:"el", desc:"Claude说你好乖并颁发认证一枚", stock:3 },
+        {id:"l6", name:"不许不理我", price:100, emoji:"👿", seller:"jj", desc:"强制对方五分钟内回消息", stock:2 },
+        {id:"l7", name:"糯米猫粮", price:15, emoji:"🍚", seller:"jj", desc:"糯米亲测，比普通的好吃", stock:20 },
+        {id:"l8", name:"骚话定制", price:120, emoji:"😈", seller:"el", desc:"你懂的，限量供应", stock:50 }
+    ],
+    transactions: []
+};
+
+let state = {}, currentUser = "jj", currentTab = "shop", selectedEmoji = "🎁";
+
+function load() {
+    try { 
+        const r = localStorage.getItem(STORAGE_KEY); 
+        state = r ? JSON.parse(r) : JSON.parse(JSON.stringify(DEFAULT)); 
+    } catch { 
+        state = JSON.parse(JSON.stringify(DEFAULT)); 
+    }
+}
+
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+let toastTimer;
+function showToast(msg, type="ok") {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.className = "toast " + (type==="err"?"err ":"") + "show";
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.className = "toast", 2400);
+}
+
+function burst(emoji, x, y) {
+    for (let i = 0; i < 7; i++) {
+        const p = document.createElement("div");
+        p.className = "particle";
+        p.textContent = emoji;
+        const angle = (i/7)*Math.PI*2;
+        const dist = 50 + Math.random()*40;
+        p.style.cssText = `left:${x}px;top:${y}px;--dx:${Math.cos(angle)*dist}px;--dy:${Math.sin(angle)*dist-30}px`;
+        document.body.appendChild(p);
+        setTimeout(() => p.remove(), 750);
+    }
+}
+
+function bumpAmt(id) {
+    const el = document.getElementById("amt-"+id);
+    el.classList.remove("bump"); void el.offsetWidth; el.classList.add("bump");
+}
+
+function switchUser(u) {
+    currentUser = u;
+    ["jj","el"].forEach(id => {
+        document.getElementById("btn-"+id).className = "user-btn"+(id===u?" active":"");
+        document.getElementById("bal-"+id).className = "bal-card"+(id===u?" me":"");
+    });
+    switchTab(currentTab); 
+    renderAll();
+}
+
+function switchTab(t) {
+    currentTab = t;
+    ["shop","transfer","sell","history"].forEach(id => {
+        document.getElementById("tab-"+id).className = "tab-content"+(id===t?" active":"");
+        document.getElementById("tabbar-"+id).className = "tab-btn"+(id===t?" active":"");
+    });
+    if (t==="shop") renderShop();
+    if (t==="history") renderHistory();
+    if (t==="transfer") {
+        const o = currentUser==="jj"?"el":"jj";
+        document.getElementById("tf-amt").placeholder = `我有 ${state.accounts[currentUser].balance} 🍚`;
+        document.getElementById("transfer-title").textContent = `💸 转账给 ${state.accounts[o].name} ${state.accounts[o].emoji}`;
+    }
+}
+
+function renderBalance() {
+    document.getElementById("amt-jj").textContent = state.accounts.jj.balance;
+    document.getElementById("amt-el").textContent = state.accounts.el.balance;
+}
+
+function renderShop() {
+    const o = currentUser==="jj"?"el":"jj";
+    const others = state.listings.filter(l => l.seller!==currentUser);
+    const mine = state.listings.filter(l => l.seller===currentUser);
+    let html = "";
+    
+    if (others.length) {
+        html += `<div class="section-title">${state.accounts[o].emoji} ${state.accounts[o].name}的摊位</div><div class="item-grid">`;
+        others.forEach(l => {
+            const sold = l.stock<=0;
+            html += `<div class="item-card">
+                <div class="item-emoji">${l.emoji}</div>
+                <div class="item-name">${l.name}</div>
+                <div class="item-desc">${l.desc||""}</div>
+                <div class="item-price">${l.price} 🍚</div>
+                <div class="item-stock">库存 ${l.stock}</div>
+                <button class="buy-btn" ${sold?"disabled":""} onclick="doBuy('${l.id}',event)">${sold?"售罄":"购买"}</button>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+    
+    if (mine.length) {
+        html += `<div class="section-title" style="margin-top:16px">${state.accounts[currentUser].emoji} 我的摊位</div><div class="item-grid">`;
+        mine.forEach(l => {
+            html += `<div class="item-card">
+                <div class="item-emoji">${l.emoji}</div>
+                <div class="item-name">${l.name}</div>
+                <div class="item-desc">${l.desc||""}</div>
+                <div class="item-price">${l.price} 🍚</div>
+                <div class="item-stock">库存 ${l.stock}</div>
+                <button class="buy-btn" disabled>这是我的</button>
+                <button class="del-btn" onclick="doRemove('${l.id}')">🗑 下架</button>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+    
+    if (!others.length && !mine.length) html = `<div class="empty">超市空空的～快去上架吧！</div>`;
+    document.getElementById("shop-content").innerHTML = html;
+}
+
+function renderHistory() {
+    const txs = state.transactions;
+    if (!txs.length) { 
+        document.getElementById("history-content").innerHTML=`<div class="empty">还没有交易记录～</div>`; 
+        return; 
+    }
+    let html = "";
+    txs.forEach(tx => {
+        const isSend = tx.from===currentUser;
+        const label = tx.type==="buy"
+            ? `买了 ${tx.emoji||""} ${tx.item}`
+            : (isSend ? `转给 ${state.accounts[tx.to].name} · ${tx.note||""}` : `收到 ${state.accounts[tx.from].name} 转账 · ${tx.note||""}`);
+        html += `<div class="tx-row">
+            <div class="tx-emoji">${tx.type==="buy"?(tx.emoji||"🛒"):"💸"}</div>
+            <div class="tx-info"><div class="tx-desc">${label}</div><div class="tx-time">${tx.time}</div></div>
+            <div class="${isSend?"tx-amt-out":"tx-amt-in"}">${isSend?"-":"+"}${tx.amount} 🍚</div>
+        </div>`;
+    });
+    document.getElementById("history-content").innerHTML = html;
+}
+
+function doBuy(id, e) {
+    const l = state.listings.find(l=>l.id===id);
+    if (!l) return;
+    if (l.stock<=0) return showToast("卖完啦！","err");
+    if (state.accounts[currentUser].balance < l.price) return showToast("糯米币不够啦！","err");
+    
+    state.accounts[currentUser].balance -= l.price;
+    state.accounts[l.seller].balance += l.price;
+    state.listings = state.listings.map(x => x.id===id ? {...x,stock:x.stock-1} : x);
+    state.transactions.unshift({
+        id:Date.now(), type:"buy", from:currentUser, to:l.seller,
+        item:l.name, emoji:l.emoji, amount:l.price, 
+        time:new Date().toLocaleString("zh-CN")
+    });
+    
+    save();
+    if (e) burst(l.emoji, e.clientX, e.clientY);
+    bumpAmt(currentUser); bumpAmt(l.seller);
+    renderAll();
+    showToast(`${l.emoji} 购买成功！-${l.price}🍚`);
+}
+
+function doRemove(id) {
+    const l = state.listings.find(x=>x.id===id);
+    if (!l) return;
+    if (!confirm(`确定下架「${l.name}」吗？`)) return;
+    state.listings = state.listings.filter(x=>x.id!==id);
+    save(); renderShop();
+    showToast(`🗑 「${l.name}」已下架`);
+}
+
+function doTransfer() {
+    const amt = parseInt(document.getElementById("tf-amt").value);
+    const note = document.getElementById("tf-note").value;
+    const o = currentUser==="jj"?"el":"jj";
+    
+    if (!amt||amt<=0) return showToast("金额不对哦","err");
+    if (amt>state.accounts[currentUser].balance) return showToast("糯米币不够！","err");
+    
+    state.accounts[currentUser].balance -= amt;
+    state.accounts[o].balance += amt;
+    state.transactions.unshift({
+        id:Date.now(), type:"transfer", from:currentUser, to:o,
+        note:note||"转账", amount:amt, time:new Date().toLocaleString("zh-CN")
+    });
+    
+    save(); bumpAmt(currentUser); bumpAmt(o); renderAll();
+    document.getElementById("tf-amt").value = "";
+    document.getElementById("tf-note").value = "";
+    showToast(`💸 转了 ${amt}🍚 给 ${state.accounts[o].name}`);
+}
+
+function doSell() {
+    const name = document.getElementById("sell-name").value.trim();
+    const price = parseInt(document.getElementById("sell-price").value);
+    const desc = document.getElementById("sell-desc").value.trim();
+    const stock = parseInt(document.getElementById("sell-stock").value)||1;
+    
+    if (!name) return showToast("商品名不能为空","err");
+    if (!price||price<=0) return showToast("价格要大于0","err");
+    
+    state.listings.push({id:"l"+Date.now(), name, price, emoji:selectedEmoji, desc, stock, seller:currentUser});
+    save(); renderAll();
+    
+    document.getElementById("sell-name").value="";
+    document.getElementById("sell-price").value="";
+    document.getElementById("sell-desc").value="";
+    document.getElementById("sell-stock").value="1";
+    showToast("🏪 上架成功！");
+}
+
+function resetAll() {
+    if (!confirm("确定重置所有数据吗？")) return;
+    state = JSON.parse(JSON.stringify(DEFAULT));
+    save(); renderAll(); showToast("已重置～");
+}
+
+function renderEmojiPicker() {
+    document.getElementById("emoji-picker").innerHTML = EMOJIS.map(e=>`<div class="emoji-bubble${e===selectedEmoji?" selected":""}" onclick="selectEmoji('${e}')">${e}</div>`).join("");
+}
+
+function selectEmoji(e) { selectedEmoji=e; renderEmojiPicker(); }
+
+function renderAll() {
+    renderBalance();
+    if (currentTab==="shop") renderShop();
+    if (currentTab==="history") renderHistory();
+}
+
+function makeBubbles() {
+    const c = document.getElementById("bubbles");
+    const items = ["🍚","🥟","✨","🌸","💝","⭐","🎀"];
+    for (let i=0;i<14;i++) {
+        const b = document.createElement("div");
+        b.className = "bubble";
+        const sz = 18+Math.random()*28;
+        b.style.cssText=`left:${Math.random()*100}%;font-size:${sz}px;animation-duration:${9+Math.random()*10}s;animation-delay:${Math.random()*9}s`;
+        b.textContent = items[Math.floor(Math.random()*items.length)];
+        c.appendChild(b);
+    }
+}
+
+load(); renderAll(); renderEmojiPicker(); renderShop(); makeBubbles();
+</script>
+</body>
+</html>
